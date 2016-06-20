@@ -32,22 +32,27 @@ enum TokenType {
 	LIT_STRING, // "FOO BAR!"
 
 	// Keywords
-	KEY_TYPE,     // type
-	KEY_INTRIN,   // intrinsic
-	KEY_VOCAB,    // vocab
-	KEY_DEFINE,   // define
-	KEY_TRAIT,    // trait
-	KEY_INSTANCE, // instance
-	KEY_MATCH,    // match
-	KEY_CASE,     // case
-	KEY_DO,       // do
-	KEY_IF,       // if
-	KEY_ELSE,     // else
-	KEY_DATA,     // data
 	KEY_ABOUT,    // about
+	KEY_CALL,     // call
+	KEY_CASE,     // case
+	KEY_DEFINE,   // define
+	KEY_DO,       // do
 	KEY_DOCS,     // docs
-	KEY_OP,       // operator
+	KEY_ELIF,     // elif
+	KEY_ELSE,     // else
+	KEY_IF,       // if
+	KEY_INSTANCE, // instance
+	KEY_INTRIN,   // intrinsic
+	KEY_JUMP,     // jump
 	KEY_LEFT,     // left
+	KEY_MATCH,    // match
+	KEY_OP,       // operator
+	KEY_PERM,     // permission
+	KEY_RET,      // return
 	KEY_RIGHT     // right
-
+	KEY_SYNONYM   // synonym
+	KEY_TRAIT,    // trait
+	KEY_TYPE,     // type
+	KEY_VOCAB,    // vocab
+	KEY_WITH      // with
 };
