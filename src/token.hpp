@@ -1,7 +1,7 @@
 #pragma once
 
 enum TokenType {
-	// Symbols //////
+	// Symbols //
 	NUL,           // Reserved
 	WHITESPACE,    // Spaces or tabs
 	INDENT,        // Spaces or tabs
@@ -16,7 +16,7 @@ enum TokenType {
 	ARROW,         // ->
 	COMMA,         // ,
 	DOT,           // .
-	TRIPLE_DOT     // ...
+	TRIPLE_DOT,    // ...
 	COLON,         // :
 	DOUBLE_COLON,  // ::
 	LEFT_CARROT,   // <
@@ -31,7 +31,7 @@ enum TokenType {
 	LIT_FLOAT,  // 3.14159
 	LIT_STRING, // "FOO BAR!"
 
-	// Keywords
+	// Keywords //
 	KEY_ABOUT,    // about
 	KEY_CALL,     // call
 	KEY_CASE,     // case
