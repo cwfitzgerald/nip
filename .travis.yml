@@ -1,6 +1,5 @@
 language: cpp
 dist: trusty
-script: make -e
 
 matrix:
   include:
@@ -11,6 +10,4 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-      env: 
-        - CC=gcc-6
-        - CXX=g++-6
+      script: make CXX=g++-6 CC=gcc-6
