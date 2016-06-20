@@ -17,9 +17,9 @@ SRC       := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
 OBJ       := $(patsubst src/%.cpp,bin/%.o,$(SRC))
 #INCLUDES  := $(addprefix -I,$(SRC_DIR))
 
-ifeq ($(CXX), g++)
-	OPTIMIZE += -flto -fwhole-program
-endif
+#ifeq ($(CXX), g++)
+#	OPTIMIZE += -flto -fwhole-program
+#endif
 
 
 .PHONY: all checkdirs clean
