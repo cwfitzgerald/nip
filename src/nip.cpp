@@ -1,9 +1,10 @@
+#include "nip.hpp"
 #include "options.hpp"
 
 #include <fstream>
 #include <iostream>
 
-NipOptions opt;
+nip::Options opt;
 
 int main(int argc, char* argv[]) {
 	if (argc != 2) {
