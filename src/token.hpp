@@ -25,8 +25,11 @@ enum TokenType {
 	DOUBLE_QUOTE,  // "
 	TD_QUOTE,      // """
 
-	// Identifiers //
-	IDENTIFIER, // Custom identifier
+	// User defined stuff //
+	IDENTIFIER, // foo in foo(->):
+	LIT_INT,    // 3
+	LIT_FLOAT,  // 3.14159
+	LIT_STRING, // "FOO BAR!"
 
 	// Keywords
 	KEY_TYPE,     // type
@@ -40,5 +43,11 @@ enum TokenType {
 	KEY_DO,       // do
 	KEY_IF,       // if
 	KEY_ELSE,     // else
-	KEY_DATA      // data
+	KEY_DATA,     // data
+	KEY_ABOUT,    // about
+	KEY_DOCS,     // docs
+	KEY_OP,       // operator
+	KEY_LEFT,     // left
+	KEY_RIGHT     // right
+
 };
