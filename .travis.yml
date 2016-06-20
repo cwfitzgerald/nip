@@ -1,8 +1,10 @@
+language: cpp
 dist: trusty
 script: make -e
 
 matrix:
   include:
+    - compiler: gcc
       addons:
         apt:
           sources:
