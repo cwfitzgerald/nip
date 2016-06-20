@@ -3,7 +3,7 @@ CXX       := g++
 
 WARNINGS  := -Wall -Wextra 
 FULLWARN  := -Wall -Wextra -Wpedantic
-STD       := -std=c++14
+STD       := -std=c++1y
 OPTIMIZE  := -O3
 DEBUG     := 
 INCLUDES  := 
