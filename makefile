@@ -30,7 +30,7 @@ debug: DEBUG = -g
 debug: OPTIMIZE = -O0
 debug: checkdirs nip
 
-profile: DEBUG = -pg
+profile: DEBUG = -g
 profile: checkdirs nip
 
 warn: WARNINGS = $(FULLWARN)

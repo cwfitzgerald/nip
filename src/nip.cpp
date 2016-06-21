@@ -4,6 +4,8 @@
 #include <fstream>
 #include <iostream>
 
+#include <chrono>
+
 nip::Options opt;
 
 int main(int argc, char* argv[]) {
@@ -19,4 +21,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	opt.program_stream = &in_file;
+
+	auto start  = std::chrono::high_resolution_clock::now();
+	auto tokens = nip::tokenizer(*opt.program_stream);
+	auto end    = std::chrono::high_resolution_clock::now() - start;
+	std::cout << "Time to tokenize = " << end.count() / 1000 << "μs\n";
+	token_printer(tokens, std::cout);
 }

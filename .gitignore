@@ -1,3 +1,7 @@
 #Binary Files
 bin/
 nip
+
+#My test files
+itest/
+*.txt

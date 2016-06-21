@@ -1,6 +1,9 @@
 #pragma once
 
-#include <stddef.h>
+#include <cinttypes>
+#include <cstddef>
+#include <string>
+#include <vector>
 
 namespace nip {
 	enum TokenType_t {
@@ -9,7 +12,8 @@ namespace nip {
 		WHITESPACE,    // Spaces or tabs
 		INDENT,        // Spaces or tabs
 		DEDENT,        // Spaces or tabs
-		NEWLINE,       // /n
+		NEWLINE,       // \n
+		DOUBLE_SLASH,  // //
 		LEFT_BRACKET,  // {
 		RIGHT_BRACKET, // }
 		LEFT_SQUARE,   // [
@@ -17,6 +21,8 @@ namespace nip {
 		LEFT_PAREN,    // (
 		RIGHT_PAREN,   // )
 		ARROW,         // ->
+		PLUS,          // +
+		MINUS,         // -
 		COMMA,         // ,
 		DOT,           // .
 		TRIPLE_DOT,    // ...
@@ -24,9 +30,6 @@ namespace nip {
 		DOUBLE_COLON,  // ::
 		LEFT_CARROT,   // <
 		RIGHT_CARROT,  // >
-		SINGLE_QUOTE,  // '
-		DOUBLE_QUOTE,  // "
-		TD_QUOTE,      // """
 
 		// User defined stuff //
 		IDENTIFIER, // foo in foo(->):
@@ -60,11 +63,16 @@ namespace nip {
 		KEY_WITH      // with
 	};
 
-	// If more information is in an array somewhere, location contextually tells the compiler where
-	// to find it, and the address says what entry in that table it can find the extra information
+	// If more information is in an array somewhere, the address tells the compiler where to find it
+	// in the relvent table
 	struct Token_t {
-		TokenType_t type; // Says the type of the token
-		size_t location;
-		size_t address;
+		Token_t() = default;
+		Token_t(TokenType_t t, size_t add = 0) : type(t), address(add){};
+		TokenType_t type = NUL; // Says the type of the token
+		size_t address   = 0;
 	};
 }
+
+extern std::vector<int64_t> token_int_cache;
+extern std::vector<double> token_float_cache;
+extern std::vector<std::string> token_identifier_cache;
