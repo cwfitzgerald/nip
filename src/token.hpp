@@ -68,8 +68,11 @@ namespace nip {
 	// in the relvent table
 	struct Token_t {
 		Token_t() = default;
-		Token_t(TokenType_t t, size_t add = 0) : type(t), address(add){};
+		Token_t(TokenType_t t, size_t ln, size_t cn, size_t add = 0)
+		    : type(t), linenum(ln), charnum(cn), address(add){};
 		TokenType_t type = NUL; // Says the type of the token
+		size_t linenum   = 0;
+		size_t charnum   = 0;
 		size_t address   = 0;
 	};
 }

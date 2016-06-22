@@ -1,17 +1,14 @@
 #include "token.hpp"
 #include "nip.hpp"
+#include "util.hpp"
+#include "utilmacro.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
-
-#ifdef _MSC_VER
-#define ALWAYS_INLINE __forceinline
-#elif defined __GNUC__
-#define ALWAYS_INLINE __attribute__((always_inline)) inline
-#endif
 
 std::vector<int64_t> token_int_cache;
 std::vector<double> token_float_cache;
@@ -51,6 +48,15 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 		curchar = file.get();
 		curcolumn++;
 		return !!file;
+	};
+	auto return_char = [&curchar, &curline, &curcolumn, &file]() {
+		file.unget();
+		if (file.peek() == '\n') {
+			curline--;
+		}
+		else {
+			curcolumn--;
+		}
 	};
 
 	// String capture function
@@ -108,6 +114,11 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				// TODO: Throw error
 				valid = false;
 			}
+			else if (curchar == '\n') {
+				output += curchar;
+				curline++;
+				curchar = 0;
+			}
 			else if (curchar == '"') {
 				if (single_quote) {
 					valid = false;
@@ -132,16 +143,16 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	while (advance_char()) {
 		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This also
 		// checks to make sure that the indentation is consistant.
-		auto update_indentation = [&curindent, &curindentlevels, &token_list,
-		                           &afternewline](size_t ic) {
+		auto update_indentation = [&curindent, &curindentlevels, &token_list, &afternewline,
+		                           &curline, &curcolumn](size_t ic) {
 			if (ic > curindent) {
 				curindentlevels.push_back(ic);
-				token_list.emplace_back(INDENT);
+				token_list.emplace_back(INDENT, curline, curcolumn);
 			}
 			else if (ic < curindent) {
 				while (curindentlevels.size() && curindentlevels.back() != ic) {
 					curindentlevels.pop_back();
-					token_list.emplace_back(DEDENT);
+					token_list.emplace_back(DEDENT, curline, curcolumn);
 				}
 				if (curindentlevels.size() == 0) {
 					std::cerr << "Mismatched indentation, inconsistant levels\n";
@@ -155,7 +166,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 			afternewline = true;
 			curline++;
 			curcolumn = 0;
-			token_list.emplace_back(NEWLINE);
+			token_list.emplace_back(NEWLINE, curline, curcolumn);
 		};
 
 		// Preprocess away any lines with just a comment in them to prevent indentation mess ups
@@ -169,6 +180,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				index++;
 			}
 			if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
+				curline++;
 				newlinestuff();
 				continue;
 			}
@@ -232,7 +244,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				curindent = 0;
 				while (curindentlevels.size()) {
 					curindentlevels.pop_back();
-					token_list.emplace_back(DEDENT);
+					token_list.emplace_back(DEDENT, curline, curcolumn);
 				}
 			}
 			afternewline = false;
@@ -251,7 +263,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 					}
 					else {
 						skipswitch = true;
-						file.unget();
+						return_char();
 					}
 					continue;
 
@@ -259,11 +271,11 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				case '-':
 					if (file.peek() == '>') {
 						advance_char();
-						token_list.emplace_back(ARROW);
+						token_list.emplace_back(ARROW, curline, curcolumn);
 					}
 					else {
 						skipswitch = true;
-						file.unget();
+						return_char();
 					}
 					continue;
 
@@ -271,72 +283,72 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				case ':':
 					if (file.peek() == ':') {
 						advance_char();
-						token_list.emplace_back(DOUBLE_COLON);
+						token_list.emplace_back(DOUBLE_COLON, curline, curcolumn);
 					}
 					else {
-						token_list.emplace_back(COLON);
+						token_list.emplace_back(COLON, curline, curcolumn);
 					}
 					continue;
 
 				// Find . and ...
 				case '.':
 					if (file.get() == '.' && file.peek() == '.') {
-						token_list.emplace_back(TRIPLE_DOT);
+						token_list.emplace_back(TRIPLE_DOT, curline, curcolumn);
 						file.unget();
 						advance_char();
 						advance_char();
 					}
 					else {
 						file.unget();
-						token_list.emplace_back(DOT);
+						token_list.emplace_back(DOT, curline, curcolumn);
 					}
 					continue;
 
 				// Find {}
 				case '{':
-					token_list.emplace_back(LEFT_BRACKET);
+					token_list.emplace_back(LEFT_BRACKET, curline, curcolumn);
 					continue;
 				case '}':
-					token_list.emplace_back(RIGHT_BRACKET);
+					token_list.emplace_back(RIGHT_BRACKET, curline, curcolumn);
 					continue;
 
 				// Find []
 				case '[':
-					token_list.emplace_back(LEFT_SQUARE);
+					token_list.emplace_back(LEFT_SQUARE, curline, curcolumn);
 					continue;
 				case ']':
-					token_list.emplace_back(RIGHT_SQUARE);
+					token_list.emplace_back(RIGHT_SQUARE, curline, curcolumn);
 					continue;
 
 				// Find ()
 				case '(':
-					token_list.emplace_back(LEFT_PAREN);
+					token_list.emplace_back(LEFT_PAREN, curline, curcolumn);
 					continue;
 				case ')':
-					token_list.emplace_back(RIGHT_PAREN);
+					token_list.emplace_back(RIGHT_PAREN, curline, curcolumn);
 					continue;
 
 				// Find ,
 				case ',':
-					token_list.emplace_back(COMMA);
+					token_list.emplace_back(COMMA, curline, curcolumn);
 					continue;
 
 				// Find <>
 				case '<':
-					token_list.emplace_back(LEFT_CARROT);
+					token_list.emplace_back(LEFT_CARROT, curline, curcolumn);
 					continue;
 				case '>':
-					token_list.emplace_back(RIGHT_CARROT);
+					token_list.emplace_back(RIGHT_CARROT, curline, curcolumn);
 					continue;
 
 				// Find +
 				case '+':
-					token_list.emplace_back(PLUS);
+					token_list.emplace_back(PLUS, curline, curcolumn);
 					continue;
 
 				// Find ;
 				case ';':
-					token_list.emplace_back(SEMI_COLON);
+					token_list.emplace_back(SEMI_COLON, curline, curcolumn);
 					continue;
 
 				// Deal with string literals, both "blah" and """blah"""
@@ -353,7 +365,8 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 					}
 					std::string str = str_advance(single);
 					token_identifier_cache.push_back(std::move(str));
-					token_list.emplace_back(LIT_STRING, token_identifier_cache.size() - 1);
+					token_list.emplace_back(LIT_STRING, curline, curcolumn,
+					                        token_identifier_cache.size() - 1);
 					continue;
 				}
 			}
@@ -371,7 +384,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 					}
 					else {
 						skipnumber = true;
-						file.unget();
+						return_char();
 						continue;
 					}
 				}
@@ -408,14 +421,16 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 						float_number *= -1.0;
 					}
 					token_float_cache.push_back(float_number);
-					token_list.emplace_back(LIT_FLOAT, token_float_cache.size() - 1);
+					token_list.emplace_back(LIT_FLOAT, curline, curcolumn,
+					                        token_float_cache.size() - 1);
 				}
 				else {
 					if (negitive) {
 						int_number *= -1;
 					}
 					token_int_cache.push_back(int_number);
-					token_list.emplace_back(LIT_INT, token_int_cache.size() - 1);
+					token_list.emplace_back(LIT_INT, curline, curcolumn,
+					                        token_int_cache.size() - 1);
 				}
 				continue;
 			}
@@ -505,10 +520,11 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 			}
 			if (tt == IDENTIFIER) {
 				token_identifier_cache.push_back(std::move(str));
-				token_list.emplace_back(IDENTIFIER, token_identifier_cache.size() - 1);
+				token_list.emplace_back(IDENTIFIER, curline, curcolumn,
+				                        token_identifier_cache.size() - 1);
 			}
 			else {
-				token_list.emplace_back(tt);
+				token_list.emplace_back(tt, curline, curcolumn);
 			}
 		}
 	}
@@ -535,12 +551,19 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 // 00013:        DEDENT |
 // 00014:       NEWLINE | \n
 void nip::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
-	size_t length = tklist.size();
-	size_t digits = std::ceil(std::log10(length));
+	size_t length           = tklist.size();
+	size_t token_num_digits = std::ceil(std::log10(length));
+	size_t line_num_digits  = std::ceil(std::log10(tklist.back().linenum));
+	size_t char_num_digits  = std::ceil(
+	    std::log10((*std::max_element(tklist.begin(), tklist.end(), [](auto left, auto right) {
+		               return (left.charnum < right.charnum);
+		           })).charnum));
 
 	size_t i = 0;
 	for (auto t : tklist) {
-		out << std::setfill('0') << std::setw(digits) << i++ << ": ";
+		out << "Line: " << std::setfill('0') << std::setw(line_num_digits) << t.linenum << " | ";
+		out << "Char: " << std::setfill('0') << std::setw(char_num_digits) << t.charnum << " | ";
+		out << std::setfill('0') << std::setw(token_num_digits) << i++ << ": ";
 		out << std::setfill(' ') << std::setw(13);
 		switch (t.type) {
 			case NUL:
@@ -649,7 +672,7 @@ void nip::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
 				break;
 			case LIT_STRING:
 				out << "LIT_STRING"
-				    << " | " << token_identifier_cache[t.address];
+				    << " | " << special_sanitize(token_identifier_cache[t.address]);
 				break;
 			case KEY_ABOUT:
 				out << "KEY_ABOUT"
