@@ -38,6 +38,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	bool afternewline = true;
 	bool skipswitch   = false;
 	bool skipnumber   = false;
+	bool firstline    = true;
 
 	// Utility functions
 	auto is_whitespace = [](char c) { return (c == ' ') || (c == '\n') || (c == '\t'); };
@@ -45,7 +46,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	auto is_numeric    = [](char c) { return (('0' <= c && c <= '9') || c == '.' || c == '-'); };
 	auto is_number     = [](char c) { return (('0' <= c && c <= '9') || c == '.'); };
 	auto is_digit      = [](char c) { return ('0' <= c && c <= '9'); };
-	auto is_terminal   = [](char c) { return char_is_in(" \t\n/{}[]()-+,.:<>", c); };
+	auto is_terminal   = [](char c) { return char_is_in(" \t\n/{}[]()-+,.:;<>", c); };
 	auto advance_char  = [&curchar, &curcolumn, &file]() {
 		curchar = file.get();
 		curcolumn++;
@@ -60,7 +61,44 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 		do {
 			advance_char();
 			if (escaped) {
-				output += curchar;
+				switch (curchar) {
+					case 'a':
+						output += '\a';
+						break;
+					case 'b':
+						output += '\b';
+						break;
+					case 'f':
+						output += '\f';
+						break;
+					case 'n':
+						output += '\n';
+						break;
+					case 'r':
+						output += '\r';
+						break;
+					case 't':
+						output += '\t';
+						break;
+					case 'v':
+						output += '\v';
+						break;
+					case '\\':
+						output += '\\';
+						break;
+					case '\'':
+						output += '\'';
+						break;
+					case '\"':
+						output += '\"';
+						break;
+					case '\?':
+						output += '\?';
+						break;
+					default:
+						std::cerr << "Error, improper excape code \\" << curchar << "\n";
+						break;
+				}
 				escaped = false;
 			}
 			else if (curchar == '\\') {
@@ -113,11 +151,33 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 			afternewline = false;
 		};
 
-		if (curchar == '\n') {
+		auto newlinestuff = [&]() {
 			afternewline = true;
 			curline++;
 			curcolumn = 0;
 			token_list.emplace_back(NEWLINE);
+		};
+
+		// Preprocess away any lines with just a comment in them to prevent indentation mess ups
+		if (curchar == '\n' || firstline) {
+			firstline = false;
+			std::string tmp;
+			std::getline(file, tmp);
+			size_t removalsize = tmp.size() + 1;
+			size_t index       = 0;
+			while (index < tmp.size() && is_whitespace(tmp[index])) {
+				index++;
+			}
+			if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
+				newlinestuff();
+				continue;
+			}
+			else {
+				for (size_t i = 0; i < removalsize; i++) {
+					file.unget();
+				}
+				newlinestuff();
+			}
 		}
 
 		else if (curchar == '\t') {
@@ -185,7 +245,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				case '/':
 					if (file.peek() == '/') {
 						// Eat the line
-						while (file.peek() == '\n' && advance_char()) {
+						while (file.peek() != '\n' && advance_char()) {
 							continue;
 						}
 					}
@@ -272,6 +332,11 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 				// Find +
 				case '+':
 					token_list.emplace_back(PLUS);
+					continue;
+
+				// Find ;
+				case ';':
+					token_list.emplace_back(SEMI_COLON);
 					continue;
 
 				// Deal with string literals, both "blah" and """blah"""
@@ -533,6 +598,10 @@ void nip::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
 			case PLUS:
 				out << "PLUS"
 				    << " | +";
+				break;
+			case SEMI_COLON:
+				out << "SEMI_COLON"
+				    << " | ;";
 				break;
 			case MINUS:
 				out << "MINUS"

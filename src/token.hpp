@@ -28,6 +28,7 @@ namespace nip {
 		TRIPLE_DOT,    // ...
 		COLON,         // :
 		DOUBLE_COLON,  // ::
+		SEMI_COLON,    // ;
 		LEFT_CARROT,   // <
 		RIGHT_CARROT,  // >
 
