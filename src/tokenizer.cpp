@@ -36,6 +36,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	bool skipswitch   = false;
 	bool skipnumber   = false;
 	bool firstline    = true;
+	bool eofset       = false;
 
 	// Utility functions
 	auto is_whitespace = [](char c) { return (c == ' ') || (c == '\n') || (c == '\t'); };
@@ -47,7 +48,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	auto advance_char  = [&curchar, &curcolumn, &file]() {
 		curchar = file.get();
 		curcolumn++;
-		return !!file;
+		return bool(file);
 	};
 	auto return_char = [&curchar, &curline, &curcolumn, &file]() {
 		file.unget();
@@ -174,6 +175,12 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 			firstline = false;
 			std::string tmp;
 			std::getline(file, tmp);
+			if (eofset) {
+				break;
+			}
+			if (file.eof()) {
+				eofset = true;
+			}
 			size_t removalsize = tmp.size() + 1;
 			size_t index       = 0;
 			while (index < tmp.size() && is_whitespace(tmp[index])) {
@@ -247,8 +254,9 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 					token_list.emplace_back(DEDENT, curline, curcolumn);
 				}
 			}
-			afternewline = false;
 		}
+
+		afternewline = false;
 
 		if (!skipswitch) {
 			switch (curchar) {
