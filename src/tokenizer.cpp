@@ -355,7 +355,9 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 
 				// Deal with string literals, both "blah" and """blah"""
 				case '"': {
-					bool single = true;
+					bool single      = true;
+					size_t startline = curline;
+					size_t startcol  = curcolumn;
 					if (file.get() == '"' && file.peek() == '"') {
 						file.unget();
 						advance_char();
@@ -367,7 +369,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					}
 					std::string str = str_advance(single);
 					token_identifier_cache.push_back(std::move(str));
-					token_list.emplace_back(LIT_STRING, curline, curcolumn,
+					token_list.emplace_back(LIT_STRING, startline, startcol,
 					                        token_identifier_cache.size() - 1);
 					continue;
 				}
