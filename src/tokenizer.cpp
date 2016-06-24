@@ -181,33 +181,30 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 			afternewline = false;
 		};
 
-		auto newlinestuff = [&]() {
+		// Preprocess away any lines with just a comment in them to prevent indentation mess ups
+		if (curchar == '\n') {
 			afternewline = true;
 			curline++;
 			curcolumn = 0;
 			token_list.emplace_back(NEWLINE, curline, curcolumn);
-		};
-
-		// Preprocess away any lines with just a comment in them to prevent indentation mess ups
-		if (curchar == '\n') {
-			newlinestuff();
+			continue;
 		}
 
 		else if (curchar == '\t') {
 			size_t ic = 1;
 			if (afternewline) {
 				// Check for indent consistancy
-				if (indent_type == TAB) {
+				if (indent_type == TAB || indent_type == UNSET) {
 					// If consistant, find all the tabs
-					while (advance_char() && curchar == '\t') {
+					while (file.peek() == ' ' && advance_char()) {
 						ic++;
 					}
 				}
 				else if (indent_type == SPACE) {
-					std::cerr << "Mismatched indentation, expected tab, found space\n";
+					std::cerr << "Mismatched indentation, expected space, found tab\n";
 					return token_list;
 				}
-				else if (indent_type == UNSET) {
+				if (indent_type == UNSET) {
 					indent_type = TAB;
 				}
 
@@ -230,10 +227,12 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					indent_type = SPACE;
 				}
 				else if (indent_type == TAB) {
-					std::cerr << "Mismatched indentation, expected space, found tab\n";
+					std::cerr << "Mismatched indentation, expected tab, found space\n";
 					return token_list;
 				}
-
+				if (indent_type == UNSET) {
+					indent_type = SPACE;
+				}
 				// Update indentation level
 				update_indentation(ic);
 			}
