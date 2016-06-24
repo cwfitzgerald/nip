@@ -1,6 +1,7 @@
 #Binary Files
 bin/
 nip
+*.out
 
 #My test files
 itest/

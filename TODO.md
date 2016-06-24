@@ -1,8 +1,7 @@
 #TODO
 
 ###Bugs
-- Column count pointing to back of token, not front
-- Column count incorrect
+- Tokenizer doesn't detect tab/space inconsistancy errors
 
 ###Documention
 - Tokenizer

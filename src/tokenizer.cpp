@@ -14,6 +14,7 @@
 std::vector<int64_t> token_int_cache;
 std::vector<double> token_float_cache;
 std::vector<std::string> token_identifier_cache;
+std::vector<std::string> source_cache;
 
 ALWAYS_INLINE bool char_is_in(const char* array, char c) {
 	for (size_t i = 0; array[i] != '\0'; i++) {
@@ -272,7 +273,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 				case '-':
 					if (file.peek() == '>') {
 						advance_char();
-						token_list.emplace_back(ARROW, curline, curcolumn);
+						token_list.emplace_back(ARROW, curline, curcolumn - 1);
 					}
 					else {
 						skipswitch = true;
@@ -378,7 +379,8 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 
 		if (!skipnumber) {
 			if (is_numeric(curchar)) {
-				bool negitive = false;
+				size_t startcol = curcolumn;
+				bool negitive   = false;
 				if (curchar == '-') {
 					if (is_number(file.peek())) {
 						negitive = true;
@@ -422,7 +424,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 						float_number *= -1.0;
 					}
 					token_float_cache.push_back(float_number);
-					token_list.emplace_back(LIT_FLOAT, curline, curcolumn,
+					token_list.emplace_back(LIT_FLOAT, curline, startcol,
 					                        token_float_cache.size() - 1);
 				}
 				else {
@@ -430,8 +432,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 						int_number *= -1;
 					}
 					token_int_cache.push_back(int_number);
-					token_list.emplace_back(LIT_INT, curline, curcolumn,
-					                        token_int_cache.size() - 1);
+					token_list.emplace_back(LIT_INT, curline, startcol, token_int_cache.size() - 1);
 				}
 				continue;
 			}
@@ -441,6 +442,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 		}
 
 		if (is_letter(curchar)) {
+			size_t startcol = curcolumn;
 			std::string str;
 			str += curchar;
 			while (!is_terminal(file.peek()) && advance_char()) {
@@ -521,11 +523,11 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 			}
 			if (tt == IDENTIFIER) {
 				token_identifier_cache.push_back(std::move(str));
-				token_list.emplace_back(IDENTIFIER, curline, curcolumn,
+				token_list.emplace_back(IDENTIFIER, curline, startcol,
 				                        token_identifier_cache.size() - 1);
 			}
 			else {
-				token_list.emplace_back(tt, curline, curcolumn);
+				token_list.emplace_back(tt, curline, startcol);
 			}
 		}
 	}
