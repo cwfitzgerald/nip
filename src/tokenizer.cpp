@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 std::vector<int64_t> token_int_cache;
@@ -23,8 +24,10 @@ ALWAYS_INLINE bool char_is_in(const char* array, char c) {
 	return false;
 }
 
-std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
+std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 	std::vector<nip::Token_t> token_list;
+
+	std::stringstream file;
 
 	char curchar     = '\0';
 	size_t curline   = 0;
@@ -35,8 +38,6 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 	bool afternewline = true;
 	bool skipswitch   = false;
 	bool skipnumber   = false;
-	bool firstline    = true;
-	bool eofset       = false;
 
 	// Utility functions
 	auto is_whitespace = [](char c) { return (c == ' ') || (c == '\n') || (c == '\t'); };
@@ -141,6 +142,22 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 		return output;
 	};
 
+	// Preprocess away any lines with only comments
+	while (fileobj) {
+		std::string tmp;
+		std::getline(fileobj, tmp);
+		size_t index = 0;
+		while (index < tmp.size() && is_whitespace(tmp[index])) {
+			index++;
+		}
+		if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
+			file << '\n';
+		}
+		else {
+			file << std::move(tmp) << '\n';
+		}
+	}
+
 	while (advance_char()) {
 		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This also
 		// checks to make sure that the indentation is consistant.
@@ -171,32 +188,8 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& file) {
 		};
 
 		// Preprocess away any lines with just a comment in them to prevent indentation mess ups
-		if (curchar == '\n' || firstline) {
-			firstline = false;
-			std::string tmp;
-			std::getline(file, tmp);
-			if (eofset) {
-				break;
-			}
-			if (file.eof()) {
-				eofset = true;
-			}
-			size_t removalsize = tmp.size() + 1;
-			size_t index       = 0;
-			while (index < tmp.size() && is_whitespace(tmp[index])) {
-				index++;
-			}
-			if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
-				curline++;
-				newlinestuff();
-				continue;
-			}
-			else {
-				for (size_t i = 0; i < removalsize; i++) {
-					file.unget();
-				}
-				newlinestuff();
-			}
+		if (curchar == '\n') {
+			newlinestuff();
 		}
 
 		else if (curchar == '\t') {
