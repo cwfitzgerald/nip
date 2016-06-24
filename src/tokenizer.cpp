@@ -155,8 +155,9 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 			file << '\n';
 		}
 		else {
-			file << std::move(tmp) << '\n';
+			file << tmp << '\n';
 		}
+		source_cache.push_back(std::move(tmp));
 	}
 
 	while (advance_char()) {
