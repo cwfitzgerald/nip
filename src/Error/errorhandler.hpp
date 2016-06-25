@@ -21,6 +21,8 @@ namespace nip::error {
 
 	class Error_Handler {
 	  public:
+		ALWAYS_INLINE void add_error(_Error_Type type, std::string& msg, size_t ll = 0,
+		                             size_t lc = 0, bool hl = false);
 		ALWAYS_INLINE void add_error(_Error_Type type, const char* msg, size_t ll = 0,
 		                             size_t lc = 0, bool hl = false);
 		void print_errors(std::ostream&);
@@ -43,6 +45,11 @@ namespace nip::error {
 		bool has_fatal   = false;
 		bool sorted      = false;
 	};
+}
+
+ALWAYS_INLINE void nip::error::Error_Handler::add_error(_Error_Type type, std::string& msg,
+                                                        size_t ll, size_t lc, bool hl) {
+	add_error(type, msg.data(), ll, lc, hl);
 }
 
 ALWAYS_INLINE void nip::error::Error_Handler::add_error(_Error_Type type, const char* msg,
