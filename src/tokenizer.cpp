@@ -11,10 +11,7 @@
 #include <sstream>
 #include <string>
 
-std::vector<int64_t> token_int_cache;
-std::vector<double> token_float_cache;
-std::vector<std::string> token_identifier_cache;
-std::vector<std::string> source_cache;
+using namespace std::string_literals;
 
 ALWAYS_INLINE bool char_is_in(const char* array, char c) {
 	for (size_t i = 0; array[i] != '\0'; i++) {
@@ -25,7 +22,7 @@ ALWAYS_INLINE bool char_is_in(const char* array, char c) {
 	return false;
 }
 
-std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
+std::vector<nip::Token_t> nip::compiler::tokenizer() {
 	std::vector<nip::Token_t> token_list;
 
 	std::stringstream file;
@@ -104,9 +101,12 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					case '\?':
 						output += '\?';
 						break;
-					default:
-						std::cerr << "Error, improper excape code \\" << curchar << "\n";
+					default: {
+						errhdlr.add_error(error::ERROR,
+						                  ("improper escape code \\"s + curchar).data(), curline,
+						                  curcolumn, true);
 						break;
+					}
 				}
 				escaped = false;
 			}
@@ -143,28 +143,34 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 		return output;
 	};
 
-	// Preprocess away any lines with only comments
-	while (fileobj) {
-		std::string tmp;
-		std::getline(fileobj, tmp);
-		size_t index = 0;
-		while (index < tmp.size() && is_whitespace(tmp[index])) {
-			index++;
+	{
+		// Preprocess away any lines with only comments, and load the
+		// source file into an array for the error handler
+		std::vector<std::string> source_cache;
+
+		while (*opt.program_stream) {
+			std::string tmp;
+			std::getline(*opt.program_stream, tmp);
+			size_t index = 0;
+			while (index < tmp.size() && is_whitespace(tmp[index])) {
+				index++;
+			}
+			if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
+				file << '\n';
+			}
+			else {
+				file << tmp << '\n';
+			}
+			source_cache.push_back(std::move(tmp));
 		}
-		if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
-			file << '\n';
-		}
-		else {
-			file << tmp << '\n';
-		}
-		source_cache.push_back(std::move(tmp));
+		errhdlr.set_source(std::move(source_cache));
 	}
 
 	while (advance_char()) {
 		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This also
 		// checks to make sure that the indentation is consistant.
 		auto update_indentation = [&curindent, &curindentlevels, &token_list, &afternewline,
-		                           &curline, &curcolumn](size_t ic) {
+		                           &curline, &curcolumn, this](size_t ic) {
 			if (ic > curindent) {
 				curindentlevels.push_back(ic);
 				token_list.emplace_back(INDENT, curline, curcolumn);
@@ -175,7 +181,8 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					token_list.emplace_back(DEDENT, curline, curcolumn);
 				}
 				if (curindentlevels.size() == 0) {
-					std::cerr << "Mismatched indentation, inconsistant levels\n";
+					errhdlr.add_error(error::ERROR, "mismatched indentation, inconsistant levels",
+					                  curline, curcolumn, true);
 				}
 			}
 			curindent    = ic;
@@ -202,7 +209,9 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					}
 				}
 				else if (indent_type == SPACE) {
-					std::cerr << "Mismatched indentation, expected space, found tab\n";
+					errhdlr.add_error(error::FATAL_ERROR,
+					                  "expected tab-based indentation, found spaces", curline,
+					                  curcolumn, true);
 					return token_list;
 				}
 				if (indent_type == UNSET) {
@@ -228,7 +237,9 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 					indent_type = SPACE;
 				}
 				else if (indent_type == TAB) {
-					std::cerr << "Mismatched indentation, expected tab, found space\n";
+					errhdlr.add_error(error::FATAL_ERROR,
+					                  "expected space-based indentation, found tabs", curline,
+					                  curcolumn, true);
 					return token_list;
 				}
 				if (indent_type == UNSET) {
@@ -555,7 +566,7 @@ std::vector<nip::Token_t> nip::tokenizer(std::istream& fileobj) {
 // 00012:       NEWLINE | \n
 // 00013:        DEDENT |
 // 00014:       NEWLINE | \n
-void nip::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
+void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
 	size_t length           = tklist.size();
 	size_t token_num_digits = std::ceil(std::log10(length));
 	size_t line_num_digits  = std::ceil(std::log10(tklist.back().linenum));

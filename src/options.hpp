@@ -1,13 +1,11 @@
 #pragma once
 
-#include <iosfwd>
+#include <iostream>
 
 namespace nip {
 	struct Options {
-		std::istream* program_stream;
-		std::ostream* output_stream;
-		std::ostream* error_stream;
+		std::istream* program_stream = nullptr;
+		std::ostream* output_stream  = &std::cout;
+		std::ostream* error_stream   = &std::cerr;
 	};
 }
-
-extern nip::Options opt;
