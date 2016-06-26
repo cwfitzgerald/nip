@@ -9,7 +9,7 @@ DEBUG     :=
 INCLUDES  := 
 LINK      := 
 
-MODULES   := Error
+MODULES   := Error Parser AST
 SRC_DIR   := src $(addprefix src/,$(MODULES))
 BUILD_DIR := bin $(addprefix bin/,$(MODULES))
 
