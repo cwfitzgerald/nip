@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cinttypes>
 #include <cstddef>
-#include <string>
-#include <vector>
 
 namespace nip {
 	enum TokenType_t {
@@ -68,15 +65,11 @@ namespace nip {
 	// in the relvent table
 	struct Token_t {
 		Token_t() = default;
-		Token_t(TokenType_t t, size_t ln, size_t cn, size_t add = 0)
+		Token_t(TokenType_t t, size_t ln = 0, size_t cn = 0, size_t add = 0)
 		    : type(t), linenum(ln), charnum(cn), address(add){};
 		TokenType_t type = NUL; // Says the type of the token
-		size_t linenum   = 0;
-		size_t charnum   = 0;
-		size_t address   = 0;
+		size_t linenum;
+		size_t charnum;
+		size_t address;
 	};
 }
-
-extern std::vector<int64_t> token_int_cache;
-extern std::vector<double> token_float_cache;
-extern std::vector<std::string> token_identifier_cache;
