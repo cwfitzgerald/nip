@@ -5,7 +5,7 @@
 namespace nip {
 	enum TokenType_t {
 		// Symbols //
-		NUL,           // Reserved
+		NUL,           // Reserved for parser (EOF)
 		WHITESPACE,    // Spaces or tabs
 		INDENT,        // Spaces or tabs
 		DEDENT,        // Spaces or tabs
