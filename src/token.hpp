@@ -44,14 +44,16 @@ namespace nip {
 		KEY_DOCS,     // docs
 		KEY_ELIF,     // elif
 		KEY_ELSE,     // else
+		KEY_EXPORT,   // export
 		KEY_IF,       // if
+		KEY_IMPORT,   // import
 		KEY_INSTANCE, // instance
 		KEY_INTRIN,   // intrinsic
 		KEY_JUMP,     // jump
 		KEY_LEFT,     // left
 		KEY_MATCH,    // match
 		KEY_OP,       // operator
-		KEY_PERM,     // permission
+		KEY_PERMIT,   // permission
 		KEY_RET,      // return
 		KEY_RIGHT,    // right
 		KEY_SYNONYM,  // synonym

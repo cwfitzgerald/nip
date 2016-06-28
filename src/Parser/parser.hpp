@@ -13,15 +13,16 @@ namespace nip::parse {
 	  public:
 		Parser(nip::error::Error_Handler& e, nip::Options& o, std::ostream& err)
 		    : errhdlr(e), opt(o), err_stream(err), cur_symbol(NUL){};
-		void parse(std::vector<nip::Token_t>&);
+		void parse(const std::vector<nip::Token_t>&);
 
 	  private:
 		nip::error::Error_Handler& errhdlr;
 		nip::Options& opt;
 		std::ostream& err_stream;
 		nip::Token_t cur_symbol;
+		size_t last_token_data = 0;
 
-		std::vector<nip::Token_t>::iterator start, end;
+		std::vector<nip::Token_t>::const_iterator start, end;
 
 		enum blocktype_t : bool { INDENTATION, BRACKETS };
 		std::vector<blocktype_t> block_type;
@@ -35,17 +36,13 @@ namespace nip::parse {
 		template <class... Args>
 		ALWAYS_INLINE bool accept(nip::TokenType_t, nip::TokenType_t, Args...);
 		ALWAYS_INLINE bool accept(nip::TokenType_t);
-		ALWAYS_INLINE bool expect(nip::TokenType_t tt, const char* msg, nip::error::_Error_Type et);
+		ALWAYS_INLINE bool expect(nip::TokenType_t tt, const char* msg = "unexpected token",
+		                          nip::error::_Error_Type et = nip::error::FATAL_ERROR);
 
 		void program();
-		void vocabulary();
 
 		// Elements
 		void element();
-		void declaration_element();
-		void definition_element();
-		void metadata_element();
-		void synonym_element();
 		void import_element();
 		void export_element();
 		void term();
@@ -55,11 +52,14 @@ namespace nip::parse {
 		void intrinsic_declaration();
 
 		// Definitions
-		void word_definition();
+		void function_definition();
 		void instance_definition();
 		void permission_definition();
+		void type_definition();
+		void vocabulary_definition();
 
 		// Metadata
+		void about_section();
 		void metadata_field();
 
 		// Synonym
@@ -84,8 +84,12 @@ namespace nip::parse {
 		void with_term();
 
 		// General stuff
+		ALWAYS_INLINE void generic_block();
 		void block_start();
 		void block_end();
+		void qualified_name();
+		void trait_arguments();
+		void type_name();
 		void signature();
 		void endofstatement();
 		void newlines();

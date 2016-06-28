@@ -508,7 +508,7 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 				tt = KEY_OP;
 			}
 			else if (str == "permission") {
-				tt = KEY_PERM;
+				tt = KEY_PERMIT;
 			}
 			else if (str == "return") {
 				tt = KEY_RET;
@@ -750,7 +750,7 @@ void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostrea
 				out << "KEY_OP"
 				    << " | operator";
 				break;
-			case KEY_PERM:
+			case KEY_PERMIT:
 				out << "KEY_PERM"
 				    << " | permission";
 				break;
