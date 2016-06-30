@@ -88,6 +88,54 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 		}
 	};
 
+	auto escaper = [this, curline, curcolumn](char c) {
+		char out = '\0';
+		switch (c) {
+			case 'a':
+				out = '\a';
+				break;
+			case 'b':
+				out = '\b';
+				break;
+			case 'f':
+				out = '\f';
+				break;
+			case 'n':
+				out = '\n';
+				break;
+			case 'r':
+				out = '\r';
+				break;
+			case 't':
+				out = '\t';
+				break;
+			case 'v':
+				out = '\v';
+				break;
+			case '\0':
+				out = '\0';
+				break;
+			case '\\':
+				out = '\\';
+				break;
+			case '\'':
+				out = '\'';
+				break;
+			case '\"':
+				out = '\"';
+				break;
+			case '\?':
+				out = '\?';
+				break;
+			default: {
+				errhdlr.add_error(error::ERROR, ("improper escape code \\"s + c).data(), curline,
+				                  curcolumn, true);
+				break;
+			}
+		}
+		return out;
+	};
+
 	// String capture function
 	auto str_advance = [&](bool single_quote) -> std::string {
 		std::string output;
@@ -96,47 +144,7 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 		do {
 			advance_char();
 			if (escaped) {
-				switch (curchar) {
-					case 'a':
-						output += '\a';
-						break;
-					case 'b':
-						output += '\b';
-						break;
-					case 'f':
-						output += '\f';
-						break;
-					case 'n':
-						output += '\n';
-						break;
-					case 'r':
-						output += '\r';
-						break;
-					case 't':
-						output += '\t';
-						break;
-					case 'v':
-						output += '\v';
-						break;
-					case '\\':
-						output += '\\';
-						break;
-					case '\'':
-						output += '\'';
-						break;
-					case '\"':
-						output += '\"';
-						break;
-					case '\?':
-						output += '\?';
-						break;
-					default: {
-						errhdlr.add_error(error::ERROR,
-						                  ("improper escape code \\"s + curchar).data(), curline,
-						                  curcolumn, true);
-						break;
-					}
-				}
+				output += escaper(curchar);
 				escaped = false;
 			}
 			else if (curchar == '\\') {
@@ -212,7 +220,8 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 	}
 
 	while (advance_char()) {
-		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This also
+		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This
+		// also
 		// checks to make sure that the indentation is consistant.
 		auto update_indentation = [&curindent, &curindentlevels, &token_list, &afternewline,
 		                           &curline, &curcolumn, this](size_t ic) {
@@ -425,6 +434,20 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 				case ';':
 					token_list.emplace_back(SEMI_COLON, curline, curcolumn);
 					continue;
+
+				// Deal with character literals
+				case '\'': {
+					char c = '\0';
+					advance_char();
+					if (curchar == '\\') {
+						advance_char();
+						c = escaper(curchar);
+					}
+					else {
+						c = curchar;
+					}
+					token_list.emplace_back(LIT_CHAR, curline, curcolumn, c);
+				}
 
 				// Deal with string literals, both "blah" and """blah"""
 				case '"': {
@@ -686,6 +709,10 @@ void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostrea
 			case LIT_FLOAT:
 				out << "LIT_FLOAT"
 				    << " | " << token_float_cache[t.address];
+				break;
+			case LIT_CHAR:
+				out << "LIT_CHAR"
+				    << " | " << special_sanitize(static_cast<char>(t.address));
 				break;
 			case LIT_STRING:
 				out << "LIT_STRING"

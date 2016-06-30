@@ -33,6 +33,7 @@ namespace nip {
 		IDENTIFIER, // the foo in foo(->):
 		LIT_INT,    // 3
 		LIT_FLOAT,  // 3.14159
+		LIT_CHAR,   // '\t'
 		LIT_STRING, // "FOO BAR!"
 
 		// Keywords //

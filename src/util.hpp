@@ -4,37 +4,44 @@
 #include <sstream>
 #include <string>
 
+ALWAYS_INLINE std::string special_sanitize(char in) {
+	using namespace std::string_literals;
+
+	switch (in) {
+		case '\a':
+			return "\\a"s;
+			break;
+		case '\b':
+			return "\\b"s;
+			break;
+		case '\f':
+			return "\\f"s;
+			break;
+		case '\n':
+			return "\\n"s;
+			break;
+		case '\r':
+			return "\\r"s;
+			break;
+		case '\t':
+			return "\\t"s;
+			break;
+		case '\v':
+			return "\\v"s;
+			break;
+		case '\0':
+			return "\\0"s;
+		default:
+			return std::string("") + in;
+			break;
+	}
+}
+
 ALWAYS_INLINE std::string special_sanitize(std::string& in) {
 	std::ostringstream newstr;
 	for (auto i : in) {
-		switch (i) {
-			case '\a':
-				newstr << "\\a";
-				break;
-			case '\b':
-				newstr << "\\b";
-				break;
-			case '\f':
-				newstr << "\\f";
-				break;
-			case '\n':
-				newstr << "\\n";
-				break;
-			case '\r':
-				newstr << "\\r";
-				break;
-			case '\t':
-				newstr << "\\t";
-				break;
-			case '\v':
-				newstr << "\\v";
-				break;
-			default:
-				newstr << i;
-				break;
-		}
+		newstr << special_sanitize(i);
 	}
-
 	return newstr.str();
 }
 
