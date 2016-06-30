@@ -57,7 +57,7 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 	std::stringstream file;
 
 	char curchar     = '\0';
-	size_t curline   = 0;
+	size_t curline   = 1;
 	size_t curcolumn = 0;
 	size_t curindent = 0;
 	std::vector<size_t> curindentlevels;
@@ -68,11 +68,11 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 
 	// Utility functions
 	auto is_whitespace = [](char c) { return (c == ' ') || (c == '\n') || (c == '\t'); };
-	auto is_letter     = [](char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); };
 	auto is_numeric    = [](char c) { return (('0' <= c && c <= '9') || c == '.' || c == '-'); };
 	auto is_number     = [](char c) { return (('0' <= c && c <= '9') || c == '.'); };
 	auto is_digit      = [](char c) { return ('0' <= c && c <= '9'); };
 	auto is_terminal   = [](char c) { return char_is_in(" \t\n/{}[]()-+,.:;<>", c); };
+	auto is_letter     = [&](char c) { return !is_terminal(c) && !is_numeric(c); };
 	auto advance_char  = [&curchar, &curcolumn, &file]() {
 		curchar = file.get();
 		curcolumn++;
@@ -223,7 +223,9 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 			afternewline = true;
 			curline++;
 			curcolumn = 0;
-			token_list.emplace_back(NEWLINE, curline, curcolumn);
+			if (token_list.size() && token_list.back().type != NEWLINE) {
+				token_list.emplace_back(NEWLINE, curline, curcolumn);
+			}
 			continue;
 		}
 
@@ -540,7 +542,7 @@ void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostrea
 		               return (left.charnum < right.charnum);
 		           })).charnum));
 
-	size_t i = 0;
+	size_t i = 1;
 	for (auto t : tklist) {
 		out << "Line: " << std::setfill('0') << std::setw(line_num_digits) << t.linenum << " | ";
 		out << "Char: " << std::setfill('0') << std::setw(char_num_digits) << t.charnum << " | ";
