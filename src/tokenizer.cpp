@@ -10,8 +10,37 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 using namespace std::string_literals;
+
+std::unordered_map<std::string, nip::TokenType_t> keyword_map = {
+    //
+    {"about", nip::KEY_ABOUT},
+    {"call", nip::KEY_CALL},
+    {"case", nip::KEY_CASE},
+    {"define", nip::KEY_DEFINE},
+    {"do", nip::KEY_DO},
+    {"docs", nip::KEY_DOCS},
+    {"elif", nip::KEY_ELIF},
+    {"else", nip::KEY_ELSE},
+    {"if", nip::KEY_IF},
+    {"instance", nip::KEY_INSTANCE},
+    {"intrinsic", nip::KEY_INTRIN},
+    {"jump", nip::KEY_JUMP},
+    {"left", nip::KEY_LEFT},
+    {"match", nip::KEY_MATCH},
+    {"operator", nip::KEY_OP},
+    {"permission", nip::KEY_PERMIT},
+    {"return", nip::KEY_RET},
+    {"right", nip::KEY_RIGHT},
+    {"synonym", nip::KEY_SYNONYM},
+    {"trait", nip::KEY_TRAIT},
+    {"type", nip::KEY_TYPE},
+    {"vocab", nip::KEY_VOCAB},
+    {"with", nip::KEY_WITH}
+    //
+};
 
 ALWAYS_INLINE bool char_is_in(const char* array, char c) {
 	for (size_t i = 0; array[i] != '\0'; i++) {
@@ -461,75 +490,11 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 			while (!is_terminal(file.peek()) && advance_char()) {
 				str += curchar;
 			}
+			// Look up string in the map, and if it can find it, set the token appropriately.
 			TokenType_t tt;
-			if (str == "about") {
-				tt = KEY_ABOUT;
-			}
-			else if (str == "call") {
-				tt = KEY_CALL;
-			}
-			else if (str == "case") {
-				tt = KEY_CASE;
-			}
-			else if (str == "define") {
-				tt = KEY_DEFINE;
-			}
-			else if (str == "do") {
-				tt = KEY_DO;
-			}
-			else if (str == "docs") {
-				tt = KEY_DOCS;
-			}
-			else if (str == "elif") {
-				tt = KEY_ELIF;
-			}
-			else if (str == "else") {
-				tt = KEY_ELSE;
-			}
-			else if (str == "if") {
-				tt = KEY_IF;
-			}
-			else if (str == "instance") {
-				tt = KEY_INSTANCE;
-			}
-			else if (str == "intrinsic") {
-				tt = KEY_INTRIN;
-			}
-			else if (str == "jump") {
-				tt = KEY_JUMP;
-			}
-			else if (str == "left") {
-				tt = KEY_LEFT;
-			}
-			else if (str == "match") {
-				tt = KEY_MATCH;
-			}
-			else if (str == "operator") {
-				tt = KEY_OP;
-			}
-			else if (str == "permission") {
-				tt = KEY_PERMIT;
-			}
-			else if (str == "return") {
-				tt = KEY_RET;
-			}
-			else if (str == "right") {
-				tt = KEY_RIGHT;
-			}
-			else if (str == "synonym") {
-				tt = KEY_SYNONYM;
-			}
-			else if (str == "trait") {
-				tt = KEY_TRAIT;
-			}
-			else if (str == "type") {
-				tt = KEY_TYPE;
-			}
-			else if (str == "vocab") {
-				tt = KEY_VOCAB;
-			}
-			else if (str == "with") {
-				tt = KEY_WITH;
+			auto itt = keyword_map.find(str);
+			if (itt != keyword_map.end()) {
+				tt = (*itt).second;
 			}
 			else {
 				tt = IDENTIFIER;

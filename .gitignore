@@ -6,3 +6,4 @@ nip
 #My test files
 itest/
 *.txt
+*.data
