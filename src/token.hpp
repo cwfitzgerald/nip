@@ -30,7 +30,7 @@ namespace nip {
 		RIGHT_CARROT,  // >
 
 		// User defined stuff //
-		IDENTIFIER, // foo in foo(->):
+		IDENTIFIER, // the foo in foo(->):
 		LIT_INT,    // 3
 		LIT_FLOAT,  // 3.14159
 		LIT_STRING, // "FOO BAR!"

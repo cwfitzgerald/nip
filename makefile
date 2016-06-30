@@ -36,6 +36,8 @@ profile: checkdirs nip
 warn: WARNINGS = $(FULLWARN)
 warn: checkdirs nip
 
+sanitize: DEBUG = -g -fsanitize=address
+sanitize: checkdirs nip
 
 
 vpath %.cpp $(SRC_DIR)

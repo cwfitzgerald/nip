@@ -180,12 +180,28 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 		while (*opt.program_stream) {
 			std::string tmp;
 			std::getline(*opt.program_stream, tmp);
-			size_t index = 0;
+			size_t index       = 0;
+			size_t lines_total = source_cache.size() + 1;
 			while (index < tmp.size() && is_whitespace(tmp[index])) {
 				index++;
 			}
 			if (index + 1 < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '/') {
+				lines_total += 1;
 				file << '\n';
+			}
+			else if (index < tmp.size() && tmp[index] == '/' && tmp[index + 1] == '*') {
+				char c = '\0';
+
+				while (*opt.program_stream) {
+					if (opt.program_stream->get(c) && c == '\n') {
+						lines_total++;
+						file << '\n';
+					}
+					else if (c == '*' && opt.program_stream->peek() == '/') {
+						break;
+					}
+				}
+				file << "\n";
 			}
 			else {
 				file << tmp << '\n';
@@ -305,6 +321,13 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 							continue;
 						}
 					}
+					else if (file.peek() == '*') {
+						while (advance_char()) {
+							if (curchar == '*' && file.peek() == '/') {
+								break;
+							}
+						}
+					}
 					else {
 						skipswitch = true;
 						return_char();
@@ -377,9 +400,17 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 					token_list.emplace_back(COMMA, curline, curcolumn);
 					continue;
 
-				// Find <>
+				// Find <>, <, and >
 				case '<':
-					token_list.emplace_back(LEFT_CARROT, curline, curcolumn);
+					if (file.peek() == '>') {
+						token_identifier_cache.push_back("<>");
+						token_list.emplace_back(IDENTIFIER, curline, curcolumn,
+						                        token_identifier_cache.size() - 1);
+						advance_char();
+					}
+					else {
+						token_list.emplace_back(LEFT_CARROT, curline, curcolumn);
+					}
 					continue;
 				case '>':
 					token_list.emplace_back(RIGHT_CARROT, curline, curcolumn);
@@ -489,7 +520,7 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 			size_t startcol = curcolumn;
 			std::string str;
 			str += curchar;
-			while (!is_terminal(file.peek()) && advance_char()) {
+			while (!char_is_in(" \t\n{}[]()-+,.:;", file.peek()) && advance_char()) {
 				str += curchar;
 			}
 			// Look up string in the map, and if it can find it, set the token appropriately.
@@ -534,7 +565,10 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 // 00013:        DEDENT |
 // 00014:       NEWLINE | \n
 void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostream& out) {
-	size_t length           = tklist.size();
+	size_t length = tklist.size();
+	if (length == 0) {
+		return;
+	}
 	size_t token_num_digits = std::ceil(std::log10(length));
 	size_t line_num_digits  = std::ceil(std::log10(tklist.back().linenum));
 	size_t char_num_digits  = std::ceil(
