@@ -10,30 +10,22 @@ ALWAYS_INLINE std::string special_sanitize(char in) {
 	switch (in) {
 		case '\a':
 			return "\\a"s;
-			break;
 		case '\b':
 			return "\\b"s;
-			break;
 		case '\f':
 			return "\\f"s;
-			break;
 		case '\n':
 			return "\\n"s;
-			break;
 		case '\r':
 			return "\\r"s;
-			break;
 		case '\t':
 			return "\\t"s;
-			break;
 		case '\v':
 			return "\\v"s;
-			break;
 		case '\0':
 			return "\\0"s;
 		default:
 			return std::string("") + in;
-			break;
 	}
 }
 
