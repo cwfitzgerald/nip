@@ -22,7 +22,7 @@ OBJ       := $(patsubst src/%.cpp,bin/%.o,$(SRC))
 
 all: checkdirs nip
 
-debug: DEBUG = -g
+debug: DEBUG = -g -DDEBUG
 debug: OPTIMIZE = -O0
 debug: checkdirs nip
 
@@ -37,6 +37,9 @@ warn: checkdirs nip
 
 sanitize: DEBUG = -g -fsanitize=address
 sanitize: checkdirs nip
+
+asm: DEBUG = -S -masm=intel
+asm: checkdirs $(OBJ)
 
 
 vpath %.cpp $(SRC_DIR)
@@ -71,8 +74,8 @@ $1/%-avx.o: %-avx.cpp
 	@$$(CXX) $$(WARNINGS) $$(STD) $$(OPTIMIZE) -mavx $$(DEBUG) $$(INCLUDES) -c $$< -o $$@
 
 $1/%-avx2.o: %-avx2.cpp
-	@echo $(CXX) $$< -mavx2
-	@$$(CXX) $$(WARNINGS) $$(STD) $$(OPTIMIZE) -mavx2 $$(DEBUG) $$(INCLUDES) -c $$< -o $$@
+	@echo $(CXX) $$< -mavx2 -mfma
+	@$$(CXX) $$(WARNINGS) $$(STD) $$(OPTIMIZE) -mavx2 -mfma $$(DEBUG) $$(INCLUDES) -c $$< -o $$@
 endef
 
 
