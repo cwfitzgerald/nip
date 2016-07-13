@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdlib>
+#include <string>
+#include <vector>
 
 namespace nip {
 	enum TokenType_t {
@@ -74,5 +77,11 @@ namespace nip {
 		size_t linenum;
 		size_t charnum;
 		size_t address;
+	};
+
+	struct Token_Cache_t {
+		std::vector<int64_t> integer;
+		std::vector<double> floating_pt;
+		std::vector<std::string> identifier;
 	};
 }

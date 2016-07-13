@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Error/errorhandler.hpp"
+#include "Parser/parser.hpp"
 #include "options.hpp"
 #include "token.hpp"
 
@@ -10,18 +11,18 @@
 namespace nip {
 	class compiler {
 	  private:
-		std::vector<int64_t> token_int_cache;
-		std::vector<double> token_float_cache;
-		std::vector<std::string> token_identifier_cache;
+		Token_Cache_t token_caches;
 
 		nip::Options opt;
 		nip::error::Error_Handler errhdlr;
+
+		nip::parse::Parser parser;
 
 		std::vector<nip::Token_t> tokenizer();
 		void token_printer(std::vector<nip::Token_t>&, std::ostream&);
 
 	  public:
-		compiler(nip::Options& o) : opt(o){};
+		compiler(nip::Options& o) : opt(o), parser(errhdlr, opt, *opt.error_stream){};
 		void argument_parser(int argc, char* argv[]);
 		void compile();
 	};

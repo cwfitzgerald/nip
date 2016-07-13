@@ -6,52 +6,26 @@
 
 Parse_Fatal_Error_t Parse_Fatal_Error;
 
-void nip::parse::Parser::parse(const std::vector<nip::Token_t>& tokens) {
-	start = tokens.begin();
-	end   = tokens.end();
-	program();
-}
+void nip::parse::Parser::parse(const std::vector<nip::Token_t>& tokens, const Token_Cache_t& tc) {
+	token_caches = tc;
+	start        = tokens.begin();
+	current      = start;
+	end          = tokens.end();
+	next_sym();
 
-ALWAYS_INLINE void nip::parse::Parser::next_sym() {
-	last_token_data = (*start).address;
-	if (++start != end) {
-		cur_symbol = *start;
-	}
-	else {
-		cur_symbol = nip::Token_t(NUL);
-	}
-}
-
-ALWAYS_INLINE void nip::parse::Parser::error(const char* msg, nip::error::_Error_Type et) {
-	errhdlr.add_error(et, msg, cur_symbol.linenum, cur_symbol.charnum, true);
-	if (et == nip::error::FATAL_ERROR) {
-		throw Parse_Fatal_Error;
-	}
-}
-
-ALWAYS_INLINE bool nip::parse::Parser::expect(nip::TokenType_t tt, const char* msg,
-                                              nip::error::_Error_Type et) {
-	if (accept(tt)) {
-		return true;
-	}
-	error(msg, et);
-	return false;
-}
-
-ALWAYS_INLINE void nip::parse::Parser::newlines() {
-	while (accept(NEWLINE))
-		continue;
-}
-
-void nip::parse::Parser::program() {
 	try {
-		while (!accept(NUL)) {
-			element();
-		}
+		metadata_preprocessor();
+		// program();
 	}
 	catch (Parse_Fatal_Error_t e) {
 		errhdlr.print_errors(*opt.error_stream);
 		return;
+	}
+}
+
+void nip::parse::Parser::program() {
+	while (!accept(NUL)) {
+		element();
 	}
 }
 
@@ -98,13 +72,44 @@ void nip::parse::Parser::element() {
 		error("export isn't a supported language feature");
 	}
 	else {
-		term();
+		while (!is(NEWLINE, SEMI_COLON)) {
+			term();
+		}
 	}
 	endofstatement();
 	newlines();
 }
 
-void nip::parse::Parser::term() {}
+void nip::parse::Parser::term() {
+	if (accept(LIT_CHAR)) {
+		; // Make a character literal
+	}
+	else if (accept(LIT_INT)) {
+		; // Make a integer literal
+	}
+	else if (accept(LIT_FLOAT)) {
+		; // Make a floating point literal
+	}
+	else if (accept(LIT_STRING)) {
+		; // Make a string literal
+	}
+	else if (is(IDENTIFIER)) {
+		qualified_name();
+	}
+	else if (accept(LEFT_PAREN)) { // Look more into this later
+		if (is(IDENTIFIER)) {
+			qualified_name();
+			while (!accept(RIGHT_PAREN)) {
+				term();
+			}
+		}
+		else {
+			while (!accept(RIGHT_PAREN)) {
+				term();
+			}
+		}
+	}
+}
 
 void nip::parse::Parser::import_element() {
 	block_start();
@@ -166,15 +171,12 @@ void nip::parse::Parser::type_definition() {
 }
 
 void nip::parse::Parser::about_section() {
-	if (accept(IDENTIFIER)) {
+	if (expect(IDENTIFIER, "expected identifier")) {
 		block_start();
 		while (is(DEDENT, RIGHT_BRACKET)) {
 			metadata_field();
 		}
 		block_end();
-	}
-	else {
-		error("expected identifier");
 	}
 }
 
@@ -207,11 +209,20 @@ void nip::parse::Parser::metadata_field() {
 	}
 }
 
-void nip::parse::Parser::word_synonym() {}
+void nip::parse::Parser::word_synonym() {
+	expect(IDENTIFIER, "expected identifier");
+	qualified_name();
+}
 
-void nip::parse::Parser::type_synonym() {}
+void nip::parse::Parser::type_synonym() {
+	expect(IDENTIFIER, "expected identifier");
+	qualified_name();
+}
 
-void nip::parse::Parser::vocabulary_synonym() {}
+void nip::parse::Parser::vocabulary_synonym() {
+	expect(IDENTIFIER, "expected identifier");
+	qualified_name();
+}
 
 void nip::parse::Parser::import_name() {
 	if (is(IDENTIFIER)) {

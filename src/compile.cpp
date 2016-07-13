@@ -1,12 +1,18 @@
 #include "nip.hpp"
+#include "util.hpp"
 
 #include <chrono>
+#include <iostream>
+#include <tuple>
 
 void nip::compiler::compile() {
-	auto start  = std::chrono::high_resolution_clock::now();
-	auto tokens = tokenizer();
-	auto end    = std::chrono::high_resolution_clock::now() - start;
-	*opt.error_stream << "Time to tokenize = " << end.count() / 1000 << "μs\n";
+	std::vector<nip::Token_t> tokens;
+	std::chrono::nanoseconds time;
+	std::tie(tokens, time) = nip::util::bench_func([&] { return tokenizer(); });
+	*opt.error_stream << "Time to tokenize = " << nip::util::print_time(time) << '\n';
+
 	token_printer(tokens, *opt.output_stream);
-	errhdlr.print_errors(*opt.error_stream);
+
+	time = nip::util::bench_func_void([&] { return parser.parse(tokens, token_caches); });
+	*opt.error_stream << "Time to parse    = " << nip::util::print_time(time) << '\n';
 }

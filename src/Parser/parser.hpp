@@ -6,94 +6,118 @@
 #include "../utilmacro.hpp"
 
 #include <iosfwd>
+#include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
-namespace nip::parse {
-	class Parser {
-	  public:
-		Parser(nip::error::Error_Handler& e, nip::Options& o, std::ostream& err)
-		    : errhdlr(e), opt(o), err_stream(err), cur_symbol(NUL){};
-		void parse(const std::vector<nip::Token_t>&);
+struct Functor_Pre_Info_t {
+	std::vector<std::string> name;
+	size_t trait_argument_count = 0;
+	std::pair<size_t, size_t> argument_count    = std::make_pair(size_t{0}, size_t{0});
+	enum : bool { INFIX, POSTFIX } calling_type = POSTFIX;
+	intmax_t presidence = 0;
+	bool declared       = false;
+	bool abouted        = false;
+	std::unordered_map<std::string, std::vector<std::string>> about_pairs;
+};
 
-	  private:
-		nip::error::Error_Handler& errhdlr;
-		nip::Options& opt;
-		std::ostream& err_stream;
-		nip::Token_t cur_symbol;
-		size_t last_token_data = 0;
+namespace nip {
+	namespace parse {
+		class Parser {
+		  public:
+			Parser(nip::error::Error_Handler& e, nip::Options& o, std::ostream& err)
+			    : errhdlr(e), opt(o), err_stream(err), cur_symbol(NUL){};
+			void parse(const std::vector<nip::Token_t>&, const Token_Cache_t&);
 
-		std::vector<nip::Token_t>::const_iterator start, end;
+		  private:
+			nip::error::Error_Handler& errhdlr;
+			nip::Options& opt;
+			std::ostream& err_stream;
+			nip::Token_t cur_symbol;
+			size_t last_token_data = 0;
 
-		enum blocktype_t : bool { INDENTATION, BRACKETS };
-		std::vector<blocktype_t> block_type;
+			std::vector<nip::Token_t>::const_iterator start, current, end;
+			Token_Cache_t token_caches;
 
-		ALWAYS_INLINE void next_sym();
-		ALWAYS_INLINE void error(const char* msg,
-		                         nip::error::_Error_Type et = nip::error::FATAL_ERROR);
-		template <class... Args>
-		ALWAYS_INLINE bool is(nip::TokenType_t, nip::TokenType_t, Args...);
-		ALWAYS_INLINE bool is(nip::TokenType_t);
-		template <class... Args>
-		ALWAYS_INLINE bool accept(nip::TokenType_t, nip::TokenType_t, Args...);
-		ALWAYS_INLINE bool accept(nip::TokenType_t);
-		ALWAYS_INLINE bool expect(nip::TokenType_t tt, const char* msg = "unexpected token",
-		                          nip::error::_Error_Type et = nip::error::FATAL_ERROR);
+			// METADATA PRE-PARSE
+			std::vector<std::string> current_qualified_name;
+			void metadata_preprocessor();
+			void metadata_scan(bool scan_for_abouts, size_t start_indent);
 
-		void program();
+			std::vector<Functor_Pre_Info_t> functor_pre_info;
 
-		// Elements
-		void element();
-		void import_element();
-		void export_element();
-		void term();
+			enum blocktype_t : bool { INDENTATION, BRACKETS };
+			std::vector<blocktype_t> block_type;
 
-		// Declarations
-		void trait_declaration();
-		void intrinsic_declaration();
+			ALWAYS_INLINE void next_sym();
+			ALWAYS_INLINE void error(const char* msg,
+			                         nip::error::_Error_Type et = nip::error::FATAL_ERROR);
+			template <class... Args>
+			ALWAYS_INLINE bool is(nip::TokenType_t, nip::TokenType_t, Args...);
+			ALWAYS_INLINE bool is(nip::TokenType_t);
+			template <class... Args>
+			ALWAYS_INLINE bool accept(nip::TokenType_t, nip::TokenType_t, Args...);
+			ALWAYS_INLINE bool accept(nip::TokenType_t);
+			ALWAYS_INLINE bool expect(nip::TokenType_t tt, const char* msg = "unexpected token",
+			                          nip::error::_Error_Type et = nip::error::FATAL_ERROR);
 
-		// Definitions
-		void function_definition();
-		void instance_definition();
-		void permission_definition();
-		void type_definition();
-		void vocabulary_definition();
+			void program();
 
-		// Metadata
-		void about_section();
-		void metadata_field();
+			// Elements
+			void element();
+			void import_element();
+			void export_element();
+			void term();
 
-		// Synonym
-		void word_synonym();
-		void type_synonym();
-		void vocabulary_synonym();
+			// Declarations
+			void trait_declaration();
+			void intrinsic_declaration();
 
-		// Imports
-		void import_name();
+			// Definitions
+			void function_definition();
+			void instance_definition();
+			void permission_definition();
+			void type_definition();
+			void vocabulary_definition();
 
-		// Terms
-		void literal_term();
-		void word_term();
-		void section_term();
-		void group_term();
-		void vector_term();
-		void lambda_term();
-		void match_term();
-		void if_term();
-		void do_term();
-		void block_term();
-		void with_term();
+			// Metadata
+			void about_section();
+			void metadata_field();
 
-		// General stuff
-		ALWAYS_INLINE void generic_block();
-		void block_start();
-		void block_end();
-		void qualified_name();
-		void trait_arguments();
-		void type_name();
-		void signature();
-		void endofstatement();
-		void newlines();
-	};
+			// Synonym
+			void word_synonym();
+			void type_synonym();
+			void vocabulary_synonym();
+
+			// Imports
+			void import_name();
+
+			// Terms
+			void literal_term();
+			void word_term();
+			void section_term();
+			void group_term();
+			void vector_term();
+			void lambda_term();
+			void match_term();
+			void if_term();
+			void do_term();
+			void block_term();
+			void with_term();
+
+			// General stuff
+			ALWAYS_INLINE void generic_block();
+			void block_start();
+			void block_end();
+			void qualified_name();
+			void trait_arguments();
+			void type_name();
+			void signature();
+			void endofstatement();
+			void newlines();
+		};
+	}
 }
 
 class Parse_Fatal_Error_t : public std::exception {
@@ -103,42 +127,8 @@ class Parse_Fatal_Error_t : public std::exception {
 	}
 };
 
-template <class... Args>
-ALWAYS_INLINE bool nip::parse::Parser::accept(nip::TokenType_t tt1, nip::TokenType_t tt2,
-                                              Args... a) {
-	if (cur_symbol.type == tt1) {
-		next_sym();
-		return true;
-	}
-	else {
-		return accept(tt2, a...);
-	}
-}
+extern Parse_Fatal_Error_t Parse_Fatal_Error;
 
-ALWAYS_INLINE bool nip::parse::Parser::accept(nip::TokenType_t tt) {
-	if (cur_symbol.type == NUL && tt == NUL) {
-		error("unexpected end of file");
-		return false;
-	}
-	else if (cur_symbol.type == tt) {
-		next_sym();
-		return true;
-	}
-	else {
-		return false;
-	}
-}
+// This structure holds information on functions so they can be properly called
 
-template <class... Args>
-ALWAYS_INLINE bool nip::parse::Parser::is(nip::TokenType_t tt1, nip::TokenType_t tt2, Args... a) {
-	if (cur_symbol.type == tt1) {
-		return true;
-	}
-	else {
-		return is(tt2, a...);
-	}
-}
-
-ALWAYS_INLINE bool nip::parse::Parser::is(nip::TokenType_t tt) {
-	return cur_symbol.type == tt;
-}
+#include "parserfunc.tpp"

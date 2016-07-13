@@ -71,8 +71,8 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 	auto is_numeric    = [](char c) { return (('0' <= c && c <= '9') || c == '.' || c == '-'); };
 	auto is_number     = [](char c) { return (('0' <= c && c <= '9') || c == '.'); };
 	auto is_digit      = [](char c) { return ('0' <= c && c <= '9'); };
-	auto is_terminal   = [](char c) { return char_is_in(" \t\n/{}[]()-+,.:;<>", c); };
-	auto is_letter     = [&](char c) { return !is_terminal(c) && !is_numeric(c); };
+	auto is_terminal   = [](char c) { return char_is_in(" \t\n{}[](),.:;", c); };
+	auto is_letter     = [&](char c) { return !is_terminal(c); };
 	auto advance_char  = [&curchar, &curcolumn, &file]() {
 		curchar = file.get();
 		curcolumn++;
@@ -86,6 +86,9 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 		else {
 			curcolumn--;
 		}
+	};
+	auto after_about = [&token_list]() {
+		return (token_list.size() && token_list.back().type == KEY_ABOUT);
 	};
 
 	auto escaper = [this, curline, curcolumn](char c) {
@@ -220,8 +223,7 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 	}
 
 	while (advance_char()) {
-		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This
-		// also
+		// This pushes INDENTs and DEDENTs to update to the current level of indentation. This also
 		// checks to make sure that the indentation is consistant.
 		auto update_indentation = [&curindent, &curindentlevels, &token_list, &afternewline,
 		                           &curline, &curcolumn, this](size_t ic) {
@@ -319,231 +321,244 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 
 		afternewline = false;
 
-		if (!skipswitch) {
-			switch (curchar) {
-				// Find // comments, than eat the whole line afterwards
-				// If it's not a comment, skip, and parse as an
-				case '/':
-					if (file.peek() == '/') {
-						// Eat the line
-						while (file.peek() != '\n' && advance_char()) {
-							continue;
-						}
-					}
-					else if (file.peek() == '*') {
-						while (advance_char()) {
-							if (curchar == '*' && file.peek() == '/') {
-								break;
+		if (!after_about()) {
+			if (!skipswitch) {
+				switch (curchar) {
+					// Find // comments, than eat the whole line afterwards
+					// If it's not a comment, skip, and parse as an
+					case '/':
+						if (file.peek() == '/') {
+							// Eat the line
+							while (file.peek() != '\n' && advance_char()) {
+								continue;
 							}
 						}
-					}
-					else {
-						skipswitch = true;
-						return_char();
-					}
-					continue;
+						else if (file.peek() == '*') {
+							while (advance_char()) {
+								if (curchar == '*' && file.peek() == '/') {
+									break;
+								}
+							}
+						}
+						else {
+							skipswitch = true;
+							return_char();
+						}
+						continue;
 
-				// Find any arrows ->
-				case '-':
-					if (file.peek() == '>') {
+					// Find any arrows ->
+					case '-':
+						if (file.peek() == '>') {
+							advance_char();
+							token_list.emplace_back(ARROW, curline, curcolumn - 1);
+						}
+						else {
+							skipswitch = true;
+							return_char();
+						}
+						continue;
+
+					// Find : and ::
+					case ':':
+						if (file.peek() == ':') {
+							advance_char();
+							token_list.emplace_back(DOUBLE_COLON, curline, curcolumn);
+						}
+						else {
+							token_list.emplace_back(COLON, curline, curcolumn);
+						}
+						continue;
+
+					// Find . and ...
+					case '.':
+						if (file.get() == '.' && file.peek() == '.') {
+							token_list.emplace_back(TRIPLE_DOT, curline, curcolumn);
+							file.unget();
+							advance_char();
+							advance_char();
+						}
+						else {
+							file.unget();
+							token_list.emplace_back(DOT, curline, curcolumn);
+						}
+						continue;
+
+					// Find {}
+					case '{':
+						token_list.emplace_back(LEFT_BRACKET, curline, curcolumn);
+						continue;
+					case '}':
+						token_list.emplace_back(RIGHT_BRACKET, curline, curcolumn);
+						continue;
+
+					// Find []
+					case '[':
+						token_list.emplace_back(LEFT_SQUARE, curline, curcolumn);
+						continue;
+					case ']':
+						token_list.emplace_back(RIGHT_SQUARE, curline, curcolumn);
+						continue;
+
+					// Find ()
+					case '(':
+						token_list.emplace_back(LEFT_PAREN, curline, curcolumn);
+						continue;
+					case ')':
+						token_list.emplace_back(RIGHT_PAREN, curline, curcolumn);
+						continue;
+
+					// Find ,
+					case ',':
+						token_list.emplace_back(COMMA, curline, curcolumn);
+						continue;
+
+					// Find <>, <, and >
+					case '<':
+						if (file.peek() == '>') {
+							token_caches.identifier.push_back("<>");
+							token_list.emplace_back(IDENTIFIER, curline, curcolumn,
+							                        token_caches.identifier.size() - 1);
+							advance_char();
+						}
+						else {
+							token_list.emplace_back(LEFT_CARROT, curline, curcolumn);
+						}
+						continue;
+					case '>':
+						token_list.emplace_back(RIGHT_CARROT, curline, curcolumn);
+						continue;
+
+					// Find +
+					case '+':
+						token_list.emplace_back(PLUS, curline, curcolumn);
+						continue;
+
+					// Find ;
+					case ';':
+						token_list.emplace_back(SEMI_COLON, curline, curcolumn);
+						continue;
+
+					// Deal with character literals
+					case '\'': {
+						char c = '\0';
 						advance_char();
-						token_list.emplace_back(ARROW, curline, curcolumn - 1);
+						if (curchar == '\\') {
+							advance_char();
+							c = escaper(curchar);
+						}
+						else {
+							c = curchar;
+						}
+						token_list.emplace_back(LIT_CHAR, curline, curcolumn, c);
 					}
-					else {
-						skipswitch = true;
-						return_char();
-					}
-					continue;
 
-				// Find : and ::
-				case ':':
-					if (file.peek() == ':') {
-						advance_char();
-						token_list.emplace_back(DOUBLE_COLON, curline, curcolumn);
-					}
-					else {
-						token_list.emplace_back(COLON, curline, curcolumn);
-					}
-					continue;
-
-				// Find . and ...
-				case '.':
-					if (file.get() == '.' && file.peek() == '.') {
-						token_list.emplace_back(TRIPLE_DOT, curline, curcolumn);
-						file.unget();
-						advance_char();
-						advance_char();
-					}
-					else {
-						file.unget();
-						token_list.emplace_back(DOT, curline, curcolumn);
-					}
-					continue;
-
-				// Find {}
-				case '{':
-					token_list.emplace_back(LEFT_BRACKET, curline, curcolumn);
-					continue;
-				case '}':
-					token_list.emplace_back(RIGHT_BRACKET, curline, curcolumn);
-					continue;
-
-				// Find []
-				case '[':
-					token_list.emplace_back(LEFT_SQUARE, curline, curcolumn);
-					continue;
-				case ']':
-					token_list.emplace_back(RIGHT_SQUARE, curline, curcolumn);
-					continue;
-
-				// Find ()
-				case '(':
-					token_list.emplace_back(LEFT_PAREN, curline, curcolumn);
-					continue;
-				case ')':
-					token_list.emplace_back(RIGHT_PAREN, curline, curcolumn);
-					continue;
-
-				// Find ,
-				case ',':
-					token_list.emplace_back(COMMA, curline, curcolumn);
-					continue;
-
-				// Find <>, <, and >
-				case '<':
-					if (file.peek() == '>') {
-						token_identifier_cache.push_back("<>");
-						token_list.emplace_back(IDENTIFIER, curline, curcolumn,
-						                        token_identifier_cache.size() - 1);
-						advance_char();
-					}
-					else {
-						token_list.emplace_back(LEFT_CARROT, curline, curcolumn);
-					}
-					continue;
-				case '>':
-					token_list.emplace_back(RIGHT_CARROT, curline, curcolumn);
-					continue;
-
-				// Find +
-				case '+':
-					token_list.emplace_back(PLUS, curline, curcolumn);
-					continue;
-
-				// Find ;
-				case ';':
-					token_list.emplace_back(SEMI_COLON, curline, curcolumn);
-					continue;
-
-				// Deal with character literals
-				case '\'': {
-					char c = '\0';
-					advance_char();
-					if (curchar == '\\') {
-						advance_char();
-						c = escaper(curchar);
-					}
-					else {
-						c = curchar;
-					}
-					token_list.emplace_back(LIT_CHAR, curline, curcolumn, c);
-				}
-
-				// Deal with string literals, both "blah" and """blah"""
-				case '"': {
-					bool single      = true;
-					size_t startline = curline;
-					size_t startcol  = curcolumn;
-					if (file.get() == '"' && file.peek() == '"') {
-						file.unget();
-						advance_char();
-						advance_char();
-						single = false;
-					}
-					else {
-						file.unget();
-					}
-					std::string str = str_advance(single);
-					token_identifier_cache.push_back(std::move(str));
-					token_list.emplace_back(LIT_STRING, startline, startcol,
-					                        token_identifier_cache.size() - 1);
-					continue;
-				}
-			}
-		}
-		else {
-			skipswitch = false;
-		}
-
-		if (!skipnumber) {
-			if (is_numeric(curchar)) {
-				size_t startcol = curcolumn;
-				bool negitive   = false;
-				if (curchar == '-') {
-					if (is_number(file.peek())) {
-						negitive = true;
-					}
-					else {
-						skipnumber = true;
-						return_char();
+					// Deal with string literals, both "blah" and """blah"""
+					case '"': {
+						bool single      = true;
+						size_t startline = curline;
+						size_t startcol  = curcolumn;
+						if (file.get() == '"' && file.peek() == '"') {
+							file.unget();
+							advance_char();
+							advance_char();
+							single = false;
+						}
+						else {
+							file.unget();
+						}
+						std::string str = str_advance(single);
+						token_caches.identifier.push_back(std::move(str));
+						token_list.emplace_back(LIT_STRING, startline, startcol,
+						                        token_caches.identifier.size() - 1);
 						continue;
 					}
 				}
-				int64_t int_number = 0;
-				if (is_digit(curchar)) {
-					int_number = curchar - '0';
-				}
-				while (is_digit(file.peek()) && advance_char()) {
-					int_number = int_number * 10 + (curchar - '0');
-				}
-				if (file.peek() == '.') {
-					advance_char();
-					double float_number   = int_number;
-					int64_t decimal_place = -1;
-					while (is_digit(file.peek()) && advance_char()) {
-						double num = curchar - '0';
-						float_number += num * std::pow(10.0L, decimal_place--);
-					}
-					if (file.peek() == 'e' && advance_char()) {
-						int64_t exponent = 0;
-						bool neg_exp     = false;
-						if (file.peek() == '-' && advance_char()) {
-							neg_exp = true;
-						}
-						while (is_digit(file.peek()) && advance_char()) {
-							exponent = exponent * 10 + (curchar - '0');
-						}
-						if (neg_exp) {
-							exponent *= -1;
-						}
-						float_number *= std::pow(10.0L, (double) exponent);
-					}
-					if (negitive) {
-						float_number *= -1.0;
-					}
-					token_float_cache.push_back(float_number);
-					token_list.emplace_back(LIT_FLOAT, curline, startcol,
-					                        token_float_cache.size() - 1);
-				}
-				else {
-					if (negitive) {
-						int_number *= -1;
-					}
-					token_int_cache.push_back(int_number);
-					token_list.emplace_back(LIT_INT, curline, startcol, token_int_cache.size() - 1);
-				}
-				continue;
 			}
-		}
-		else {
-			skipnumber = false;
+			else {
+				skipswitch = false;
+			}
+
+			if (!skipnumber) {
+				if (is_numeric(curchar)) {
+					size_t startcol = curcolumn;
+					bool negitive   = false;
+					if (curchar == '-') {
+						if (is_number(file.peek())) {
+							negitive = true;
+						}
+						else {
+							skipswitch = true;
+							skipnumber = true;
+							return_char();
+							continue;
+						}
+					}
+					int64_t int_number = 0;
+					if (is_digit(curchar)) {
+						int_number = curchar - '0';
+					}
+					while (is_digit(file.peek()) && advance_char()) {
+						int_number = int_number * 10 + (curchar - '0');
+					}
+					if (file.peek() == '.') {
+						advance_char();
+						double float_number   = int_number;
+						int64_t decimal_place = -1;
+						while (is_digit(file.peek()) && advance_char()) {
+							double num = curchar - '0';
+							float_number += num * std::pow(10.0L, decimal_place--);
+						}
+						if (file.peek() == 'e' && advance_char()) {
+							int64_t exponent = 0;
+							bool neg_exp     = false;
+							if (file.peek() == '-' && advance_char()) {
+								neg_exp = true;
+							}
+							while (is_digit(file.peek()) && advance_char()) {
+								exponent = exponent * 10 + (curchar - '0');
+							}
+							if (neg_exp) {
+								exponent *= -1;
+							}
+							float_number *= std::pow(10.0L, (double) exponent);
+						}
+						if (negitive) {
+							float_number *= -1.0;
+						}
+						token_caches.floating_pt.push_back(float_number);
+						token_list.emplace_back(LIT_FLOAT, curline, startcol,
+						                        token_caches.floating_pt.size() - 1);
+					}
+					else {
+						if (negitive) {
+							int_number *= -1;
+						}
+						token_caches.integer.push_back(int_number);
+						token_list.emplace_back(LIT_INT, curline, startcol,
+						                        token_caches.integer.size() - 1);
+					}
+					continue;
+				}
+			}
+			else {
+				skipnumber = false;
+			}
 		}
 
 		if (is_letter(curchar)) {
 			size_t startcol = curcolumn;
 			std::string str;
 			str += curchar;
-			while (!char_is_in(" \t\n{}[]()-+,.:;", file.peek()) && advance_char()) {
+			const char* normalterms = " \t\n{}[](),.:;<>";
+			const char* aboutterms  = " \t\n{}[](),.:;";
+			const char* t;
+			if (token_list.size() && token_list.back().type == KEY_ABOUT) {
+				t = aboutterms;
+			}
+			else {
+				t = normalterms;
+			}
+			while (!char_is_in(t, file.peek()) && advance_char()) {
 				str += curchar;
 			}
 			// Look up string in the map, and if it can find it, set the token appropriately.
@@ -556,9 +571,9 @@ std::vector<nip::Token_t> nip::compiler::tokenizer() {
 				tt = IDENTIFIER;
 			}
 			if (tt == IDENTIFIER) {
-				token_identifier_cache.push_back(std::move(str));
+				token_caches.identifier.push_back(std::move(str));
 				token_list.emplace_back(IDENTIFIER, curline, startcol,
-				                        token_identifier_cache.size() - 1);
+				                        token_caches.identifier.size() - 1);
 			}
 			else {
 				token_list.emplace_back(tt, curline, startcol);
@@ -700,23 +715,23 @@ void nip::compiler::token_printer(std::vector<nip::Token_t>& tklist, std::ostrea
 				break;
 			case IDENTIFIER:
 				out << "IDENTIFIER"
-				    << " | " << token_identifier_cache[t.address];
+				    << " | " << token_caches.identifier[t.address];
 				break;
 			case LIT_INT:
 				out << "LIT_INT"
-				    << " | " << token_int_cache[t.address];
+				    << " | " << token_caches.integer[t.address];
 				break;
 			case LIT_FLOAT:
 				out << "LIT_FLOAT"
-				    << " | " << token_float_cache[t.address];
+				    << " | " << token_caches.floating_pt[t.address];
 				break;
 			case LIT_CHAR:
 				out << "LIT_CHAR"
-				    << " | " << special_sanitize(static_cast<char>(t.address));
+				    << " | " << nip::util::special_sanitize(static_cast<char>(t.address));
 				break;
 			case LIT_STRING:
 				out << "LIT_STRING"
-				    << " | " << special_sanitize(token_identifier_cache[t.address]);
+				    << " | " << nip::util::special_sanitize(token_caches.identifier[t.address]);
 				break;
 			case KEY_ABOUT:
 				out << "KEY_ABOUT"
