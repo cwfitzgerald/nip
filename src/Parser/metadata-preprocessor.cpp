@@ -103,6 +103,7 @@ void nip::parse::Parser::metadata_scan(bool scan_for_abouts, size_t start_indent
 				accept(NEWLINE);
 				expect(INDENT, "expected indent");
 				metadata_scan(scan_for_abouts, indent_level + 1);
+				current_qualified_name.pop_back();
 			}
 		}
 		else {
@@ -148,6 +149,12 @@ void nip::parse::Parser::metadata_scan(bool scan_for_abouts, size_t start_indent
 							expect(DEDENT, "expected dedent");
 						}
 					}
+				}
+				else if (accept(INDENT)) {
+					indent_level++;
+				}
+				else if (accept(DEDENT)) {
+					indent_level--;
 				}
 				else {
 					next_sym();
