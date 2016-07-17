@@ -43,9 +43,16 @@ namespace nip {
 			// METADATA PRE-PARSE
 			std::vector<std::string> current_qualified_name;
 			void metadata_preprocessor();
-			void metadata_scan(bool scan_for_abouts, size_t start_indent);
+			void metadata_scan_abouts(size_t start_indent);
+			void metadata_scan_functors(size_t start_indent);
+			std::pair<size_t, size_t> metadata_parse_functor_args();
+			size_t metadata_parse_trait_args();
+			template <class Callback_t, class... Args>
+			void metadata_vocab(Callback_t callback, Args&&... a);
 
 			std::vector<Functor_Pre_Info_t> functor_pre_info;
+			Functor_Pre_Info_t& metadata_get_functor_info(std::vector<std::string>& name,
+			                                              bool about);
 
 			enum blocktype_t : bool { INDENTATION, BRACKETS };
 			std::vector<blocktype_t> block_type;
