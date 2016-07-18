@@ -15,4 +15,6 @@ void nip::compiler::compile() {
 
 	time = nip::util::bench_func_void([&] { return parser.parse(tokens, token_caches); });
 	*opt.error_stream << "Time to parse    = " << nip::util::print_time(time) << '\n';
+
+	parser.print_metadata_functor_info();
 }

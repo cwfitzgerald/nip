@@ -1,3 +1,4 @@
+#include "../util.hpp"
 #include "parser.hpp"
 
 #include <algorithm>
@@ -10,7 +11,7 @@
 void nip::parse::Parser::metadata_preprocessor() {
 	metadata_scan_abouts(0);
 	current = start; // Reset the current iterator back to normal
-	// metadata_scan_functors( 0);
+	// metadata_scan_functors(0);
 	current = start; // Reset the current iterator back to normal
 }
 
@@ -123,42 +124,83 @@ void nip::parse::Parser::metadata_scan_abouts(size_t start_indent) {
 			expect(COLON, "expected colon");
 			expect(NEWLINE, "expected newline");
 			expect(INDENT, "expected indent");
-			while (accept(IDENTIFIER)) {
-				std::vector<std::string>& right_term =
-				    function.about_pairs[token_caches.identifier[last_token_data]];
-				expect(COLON, "expected colon");
-				accept(NEWLINE);
-				bool indented = accept(INDENT);
-				while (!accept(NEWLINE)) {
-					switch (cur_symbol.type) {
-						case IDENTIFIER:
-							right_term.emplace_back(token_caches.identifier[cur_symbol.address]);
-							break;
-						case LIT_FLOAT:
-							right_term.emplace_back(
-							    std::to_string(token_caches.floating_pt[cur_symbol.address]));
-							break;
-						case LIT_INT:
-							right_term.emplace_back(
-							    std::to_string(token_caches.integer[cur_symbol.address]));
-							break;
-						default:
-							error("unexpected token");
-							break;
+
+			while (is(IDENTIFIER, KEY_DOCS, KEY_OP)) {
+				bool indented = false;
+
+				if (accept(KEY_DOCS)) {
+					expect(COLON, "expected colon");
+					accept(NEWLINE);
+					indented = accept(INDENT);
+
+					if (accept(LIT_STRING)) {
+						function.documentation = token_caches.identifier[last_token_data];
 					}
-					next_sym();
+					while (!accept(NEWLINE))
+						next_sym();
+				}
+
+				else if (accept(KEY_OP)) {
+					expect(COLON, "expected colon");
+					accept(NEWLINE);
+					indented = accept(INDENT);
+
+					if (is(KEY_LEFT, KEY_RIGHT)) {
+						if (accept(KEY_LEFT)) {
+							function.calling_type = Functor_Pre_Info_t::INFIX_LEFT;
+						}
+						else if (accept(KEY_RIGHT)) {
+							function.calling_type = Functor_Pre_Info_t::INFIX_RIGHT;
+						}
+						if (accept(LIT_INT)) {
+							function.presidence = token_caches.integer[last_token_data];
+						}
+					}
+					while (!accept(NEWLINE))
+						next_sym();
+				}
+
+				else if (accept(IDENTIFIER)) {
+					std::vector<std::string>& right_term =
+					    function.about_pairs[token_caches.identifier[last_token_data]];
+					expect(COLON, "expected colon");
+					accept(NEWLINE);
+					indented = accept(INDENT);
+					while (!accept(NEWLINE)) {
+						switch (cur_symbol.type) {
+							case IDENTIFIER:
+								right_term.emplace_back(
+								    token_caches.identifier[cur_symbol.address]);
+								break;
+							case LIT_FLOAT:
+								right_term.emplace_back(
+								    std::to_string(token_caches.floating_pt[cur_symbol.address]));
+								break;
+							case LIT_INT:
+								right_term.emplace_back(
+								    std::to_string(token_caches.integer[cur_symbol.address]));
+								break;
+							default:
+								error("unexpected token");
+								break;
+						}
+						next_sym();
+					}
 				}
 				if (indented) {
 					expect(DEDENT, "expected dedent");
 				}
 			}
 		}
+
 		else if (accept(INDENT)) {
 			indent_level++;
 		}
+
 		else if (accept(DEDENT)) {
 			indent_level--;
 		}
+
 		else {
 			next_sym();
 		}
@@ -167,7 +209,6 @@ void nip::parse::Parser::metadata_scan_abouts(size_t start_indent) {
 }
 
 void nip::parse::Parser::metadata_scan_functors(size_t start_indent) {
-
 	size_t indent_level = start_indent;
 	while (!is(NUL) && indent_level >= start_indent) {
 		if (accept(KEY_VOCAB)) {
@@ -213,4 +254,43 @@ void nip::parse::Parser::metadata_scan_functors(size_t start_indent) {
 	}
 
 	std::cerr << functor_pre_info.size() << '\n';
+}
+
+void nip::parse::Parser::print_metadata_functor_info() {
+	for (auto& i : functor_pre_info) {
+		std::cerr << "         Name: ";
+		for (auto& name_part : i.name) {
+			std::cerr << name_part;
+		}
+		std::cerr << '\n';
+		std::cerr << "   Trait Args: " << i.trait_argument_count << '\n';
+		std::cerr << "    Arguments: " << i.argument_count.first << " -> "
+		          << i.argument_count.second << '\n';
+		std::cerr << " Calling Type: ";
+		switch (i.calling_type) {
+			case Functor_Pre_Info_t::INFIX_LEFT:
+				std::cerr << "Left Infix\n";
+				break;
+			case Functor_Pre_Info_t::INFIX_RIGHT:
+				std::cerr << "Right Infix\n";
+				break;
+			case Functor_Pre_Info_t::POSTFIX:
+				std::cerr << "Postfix\n";
+				break;
+		}
+		if (i.calling_type != Functor_Pre_Info_t::POSTFIX) {
+			std::cerr << "   Presidence: " << i.presidence << '\n';
+		}
+		std::cerr << "     Declared: " << i.declared << '\n';
+		std::cerr << "      Abouted: " << i.abouted << '\n';
+		std::cerr << "  About Pairs: \n";
+		for (auto& about : i.about_pairs) {
+			std::cerr << '\t' << about.first << ": ";
+			for (auto& value : about.second) {
+				std::cerr << value << " ";
+			}
+			std::cerr << '\n';
+		}
+		std::cerr << "Documentation: " << nip::util::special_sanitize(i.documentation) << "\n\n";
+	}
 }

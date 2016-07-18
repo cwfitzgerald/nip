@@ -14,12 +14,13 @@
 struct Functor_Pre_Info_t {
 	std::vector<std::string> name;
 	size_t trait_argument_count = 0;
-	std::pair<size_t, size_t> argument_count    = std::make_pair(size_t{0}, size_t{0});
-	enum : bool { INFIX, POSTFIX } calling_type = POSTFIX;
+	std::pair<size_t, size_t> argument_count = std::make_pair(size_t{0}, size_t{0});
+	enum : uint8_t { INFIX_LEFT, INFIX_RIGHT, POSTFIX } calling_type = POSTFIX;
 	intmax_t presidence = 0;
 	bool declared       = false;
 	bool abouted        = false;
 	std::unordered_map<std::string, std::vector<std::string>> about_pairs;
+	std::string documentation;
 };
 
 namespace nip {
@@ -29,6 +30,7 @@ namespace nip {
 			Parser(nip::error::Error_Handler& e, nip::Options& o, std::ostream& err)
 			    : errhdlr(e), opt(o), err_stream(err), cur_symbol(NUL){};
 			void parse(const std::vector<nip::Token_t>&, const Token_Cache_t&);
+			void print_metadata_functor_info();
 
 		  private:
 			nip::error::Error_Handler& errhdlr;
